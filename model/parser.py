@@ -6,6 +6,7 @@ from six.moves import xrange as range
 import math
 from collections import OrderedDict
 import numpy as np
+import pdb
 
 import torch
 import torch.nn as nn
@@ -629,14 +630,14 @@ class Parser(nn.Module):
                         productions = self.transition_system.get_valid_continuating_productions(hyp)
                         for production in productions:
                             prod_id = self.grammar.prod2id[production]
-                            prod_score = apply_rule_log_prob[hyp_id, prod_id].data[0]
+                            prod_score = apply_rule_log_prob[hyp_id, prod_id].item() #.data[0]
                             new_hyp_score = hyp.score + prod_score
 
                             applyrule_new_hyp_scores.append(new_hyp_score)
                             applyrule_new_hyp_prod_ids.append(prod_id)
                             applyrule_prev_hyp_ids.append(hyp_id)
                     elif action_type == ReduceAction:
-                        action_score = apply_rule_log_prob[hyp_id, len(self.grammar)].data[0]
+                        action_score = apply_rule_log_prob[hyp_id, len(self.grammar)].item() #.data[0]
                         new_hyp_score = hyp.score + action_score
 
                         applyrule_new_hyp_scores.append(new_hyp_score)
@@ -657,10 +658,10 @@ class Parser(nn.Module):
                                     token_id = primitive_vocab[token]
                                     primitive_prob[hyp_id, token_id] = primitive_prob[hyp_id, token_id] + gated_copy_prob
 
-                                    hyp_copy_info[token] = (token_pos_list, gated_copy_prob.data[0])
+                                    hyp_copy_info[token] = (token_pos_list, gated_copy_prob.item())#data[0])
                                 else:
                                     hyp_unk_copy_info.append({'token': token, 'token_pos_list': token_pos_list,
-                                                              'copy_prob': gated_copy_prob.data[0]})
+                                                              'copy_prob': gated_copy_prob.item()})#data[0]})
 
                         if args.no_copy is False and len(hyp_unk_copy_info) > 0:
                             unk_i = np.array([x['copy_prob'] for x in hyp_unk_copy_info]).argmax()
@@ -686,6 +687,8 @@ class Parser(nn.Module):
             live_hyp_ids = []
             new_hypotheses = []
             for new_hyp_score, new_hyp_pos in zip(top_new_hyp_scores.data.cpu(), top_new_hyp_pos.data.cpu()):
+                #new_hyp_score = new_hyp_score.item()
+                new_hyp_pos = new_hyp_pos.item()
                 action_info = ActionInfo()
                 if new_hyp_pos < len(applyrule_new_hyp_scores):
                     # it's an ApplyRule or Reduce action
@@ -709,6 +712,7 @@ class Parser(nn.Module):
                     # copy_info = gentoken_copy_infos[k]
                     prev_hyp_id = gentoken_prev_hyp_ids[k]
                     prev_hyp = hypotheses[prev_hyp_id]
+                    #pdb.set_trace()
                     # except:
                     #     print('k=%d' % k, file=sys.stderr)
                     #     print('primitive_prob.size(1)=%d' % primitive_prob.size(1), file=sys.stderr)
@@ -743,11 +747,11 @@ class Parser(nn.Module):
                     if debug:
                         action_info.gen_copy_switch = 'n/a' if args.no_copy else primitive_predictor_prob[prev_hyp_id, :].log().cpu().data.numpy()
                         action_info.in_vocab = token in primitive_vocab
-                        action_info.gen_token_prob = gen_from_vocab_prob[prev_hyp_id, token_id].log().cpu().data[0] \
+                        action_info.gen_token_prob = gen_from_vocab_prob[prev_hyp_id, token_id].log().cpu().item() \
                             if token in primitive_vocab else 'n/a'
                         action_info.copy_token_prob = torch.gather(primitive_copy_prob[prev_hyp_id],
                                                                    0,
-                                                                   Variable(T.LongTensor(action_info.src_token_position))).sum().log().cpu().data[0] \
+                                                                   Variable(T.LongTensor(action_info.src_token_position))).sum().log().cpu().item() \
                             if args.no_copy is False and action_info.copy_from_src else 'n/a'
 
                 action_info.action = action
