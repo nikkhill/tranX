@@ -41,9 +41,12 @@ class PointerNet(nn.Module):
         if self.attention_type == 'multihead':
             src_encodings = F.leaky_relu(src_encodings)  # otherwise whats the difference?
             batch_size, _, src_sent_len, query_vec_size = src_encodings.shape  # well, query_vec_size is numheads times bigger than actual
+            # batch_size, tgt_action_num, src_sent_len, numheads, something
             src_encodings = src_encodings.contiguous().view(batch_size, _, src_sent_len,
                                                             self.numheads, query_vec_size // self.numheads)
-            # (batch_size, tgt_action_num, numheads, src_sent_len)
+
+
+            # (batch_size, tgt_action_num, src_sent_len, numheads)
             weights = torch.matmul(src_encodings, q.unsqueeze(-3)).squeeze(-1)
 
             # (tgt_action_num, batch_size, numheads, src_sent_len)
@@ -55,7 +58,7 @@ class PointerNet(nn.Module):
                 weights.data.masked_fill_(src_token_mask, -float('inf'))
 
             # (tgt_action_num, batch_size, src_sent_len)
-            weights = self.multihead_combiner(weights.permute(0, 1, 3, 2)).squeeze(-1)
+            weights = self.multihead_combiner(weights).squeeze(-1)
 
             ptr_weights = F.softmax(weights, dim=-1)  # tgt_action_num, batch_size, src_sent_len
 
