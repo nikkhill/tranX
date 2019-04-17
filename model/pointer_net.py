@@ -49,18 +49,15 @@ class PointerNet(nn.Module):
             # (batch_size, tgt_action_num, src_sent_len, numheads)
             weights = torch.matmul(src_encodings, q.unsqueeze(-3)).squeeze(-1)
 
-            # (tgt_action_num, batch_size, numheads, src_sent_len)
+            # (tgt_action_num, batch_size, src_sent_len, numheads)
             weights = weights.permute(1, 0, 2, 3)
 
-            if src_token_mask is not None:
-                # (tgt_action_num, batch_size, numheads, src_sent_len)
-                src_token_mask = src_token_mask.unsqueeze(0).unsqueeze(-1).expand_as(weights)
-                weights.data.masked_fill_(src_token_mask, -float('inf'))
-
-            # (tgt_action_num, batch_size, src_sent_len)
             weights = self.multihead_combiner(weights).squeeze(-1)
-
-            ptr_weights = F.softmax(weights, dim=-1)  # tgt_action_num, batch_size, src_sent_len
+            if src_token_mask is not None:
+                # (tgt_action_num, batch_size, src_sent_len, numheads)
+                src_token_mask = src_token_mask.unsqueeze(0).expand_as(weights)
+                # (tgt_action_num, batch_size, src_sent_len)
+                weights.data.masked_fill_(src_token_mask, -float('inf'))
 
         else:
             # (batch_size, tgt_action_num, src_sent_len)
@@ -74,6 +71,6 @@ class PointerNet(nn.Module):
                 src_token_mask = src_token_mask.unsqueeze(0).expand_as(weights)
                 weights.data.masked_fill_(src_token_mask, -float('inf'))
 
-            ptr_weights = F.softmax(weights, dim=-1)  # tgt_action_num, batch_size, src_sent_len
+        ptr_weights = F.softmax(weights, dim=-1)  # tgt_action_num, batch_size, src_sent_len
 
         return ptr_weights
