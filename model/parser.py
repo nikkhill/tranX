@@ -119,7 +119,7 @@ class Parser(nn.Module):
             self.numheads = 4
             # values
             self.att_src_linear = nn.Linear(args.hidden_size, args.hidden_size * self.numheads, bias=False)
-            self.multihead_combiner = nn.Linear(self.numheads, 1, bias=False)
+            self.multihead_combiner = nn.Linear(args.hidden_size * self.numheads, args.hidden_size, bias=True)
         else:
             self.numheads = 1
             self.att_src_linear = nn.Linear(args.hidden_size, args.hidden_size, bias=False)

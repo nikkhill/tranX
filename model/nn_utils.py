@@ -30,20 +30,35 @@ def dot_prod_attention(h_t, src_encoding, src_encoding_att_linear, mask=None, at
         src_encoding_att_linear = src_encoding_att_linear.contiguous().view(batch_size, src_sent_len, attention_heads,
                                                                             query_vec_size // attention_heads)
         # (batch_size, src_sent_len, attention_heads)
-        att_weight = torch.bmm(src_encoding_att_linear, h_t.unsqueeze(1).unsqueeze(3)).squeeze(-1)
+        att_weights = torch.matmul(src_encoding_att_linear, h_t.unsqueeze(1).unsqueeze(3)).squeeze(-1)
+
+        # batch_size, numheads, src_sent_len
+        att_weights = att_weights.permute(0,2,1)
         # batch_size, src_sent_len
-        att_weight = attention_combiner(att_weight).squeeze(-1)
+        # att_weight = attention_combiner(att_weight).squeeze(-1)
+        if mask is not None:
+            att_weights.data.masked_fill_(mask.unsqueeze(1).expand_as(att_weights), -float('inf'))
+
+        # batch_size, numheads, src_sent_len
+        att_weight = F.softmax(att_weights, dim=-1)
+
+        # (batch_size, numheads, hidden_size), src_encoding:(batch_size, src_sent_len, hidden_size * 2)
+        ctx_vec = torch.matmul(att_weight.unsqueeze(-2), src_encoding.unsqueeze(1)).squeeze(-2)
+        # (batch_size, numheads * hidden_size),
+        ctx_vec = ctx_vec.view(batch_size, attention_heads * src_encoding.shape[-1])
+        # (batch_size, hidden_size)
+        ctx_vec = attention_combiner(ctx_vec)
     else:
         # (batch_size, src_sent_len)
         att_weight = torch.bmm(src_encoding_att_linear, h_t.unsqueeze(2)).squeeze(2)
 
-    if mask is not None:
-        att_weight.data.masked_fill_(mask, -float('inf'))
-    att_weight = F.softmax(att_weight, dim=-1)
+        if mask is not None:
+            att_weight.data.masked_fill_(mask, -float('inf'))
+        att_weight = F.softmax(att_weight, dim=-1)
 
-    att_view = (att_weight.size(0), 1, att_weight.size(1))
-    # (batch_size, hidden_size)
-    ctx_vec = torch.bmm(att_weight.view(*att_view), src_encoding).squeeze(1)
+        att_view = (att_weight.size(0), 1, att_weight.size(1))
+        # (batch_size, hidden_size)
+        ctx_vec = torch.bmm(att_weight.view(*att_view), src_encoding).squeeze(1)
 
     return ctx_vec, att_weight
 
