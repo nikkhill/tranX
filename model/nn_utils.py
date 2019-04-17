@@ -13,15 +13,30 @@ import numpy as np
 from six.moves import xrange
 
 
-def dot_prod_attention(h_t, src_encoding, src_encoding_att_linear, mask=None):
+def dot_prod_attention(h_t, src_encoding, src_encoding_att_linear, mask=None, attention_heads=1,
+                       attention_combiner=None):
     """
     :param h_t: (batch_size, hidden_size)
     :param src_encoding: (batch_size, src_sent_len, hidden_size * 2)
     :param src_encoding_att_linear: (batch_size, src_sent_len, hidden_size)
     :param mask: (batch_size, src_sent_len)
     """
-    # (batch_size, src_sent_len)
-    att_weight = torch.bmm(src_encoding_att_linear, h_t.unsqueeze(2)).squeeze(2)
+
+    if attention_heads > 1: # means we're doing multihead
+        src_encoding_att_linear = F.leaky_relu(src_encoding_att_linear)  # otherwise whats the difference?
+        batch_size, src_sent_len, query_vec_size = src_encoding_att_linear.shape
+
+        # batch_size, src_sent_len, attention_heads, hidden_size
+        src_encoding_att_linear = src_encoding_att_linear.contiguous().view(batch_size, src_sent_len, attention_heads,
+                                                                            query_vec_size // attention_heads)
+        # (batch_size, src_sent_len, attention_heads)
+        att_weight = torch.bmm(src_encoding_att_linear, h_t.unsqueeze(1).unsqueeze(3)).squeeze(-1)
+        # batch_size, src_sent_len
+        att_weight = attention_combiner(att_weight).squeeze(-1)
+    else:
+        # (batch_size, src_sent_len)
+        att_weight = torch.bmm(src_encoding_att_linear, h_t.unsqueeze(2)).squeeze(2)
+
     if mask is not None:
         att_weight.data.masked_fill_(mask, -float('inf'))
     att_weight = F.softmax(att_weight, dim=-1)

@@ -9,7 +9,7 @@ from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
 
 
 class PointerNet(nn.Module):
-    def __init__(self, query_vec_size, src_encoding_size, attention_type='multihead'):
+    def __init__(self, query_vec_size, src_encoding_size, attention_type='affine'):
         super(PointerNet, self).__init__()
 
         assert attention_type in ('affine', 'dot_prod', 'multihead')

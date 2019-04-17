@@ -35,7 +35,7 @@ class Parser(nn.Module):
     The parser translates a natural language utterance into an AST defined under
     the ASDL specification, using the transition system described in https://arxiv.org/abs/1810.02720
     """
-    def __init__(self, args, vocab, transition_system):
+    def __init__(self, args, vocab, transition_system, attention_type="multihead"):
         super(Parser, self).__init__()
 
         self.args = args
@@ -114,8 +114,15 @@ class Parser(nn.Module):
 
         # attention: dot product attention
         # project source encoding to decoder rnn's hidden space
-
-        self.att_src_linear = nn.Linear(args.hidden_size, args.hidden_size, bias=False)
+        self.attention_type = attention_type
+        if attention_type == 'multihead':
+            self.numheads = 4
+            # values
+            self.att_src_linear = nn.Linear(args.hidden_size, args.hidden_size * self.numheads, bias=False)
+            self.multihead_combiner = nn.Linear(self.numheads, 1, bias=False)
+        else:
+            self.numheads = 1
+            self.att_src_linear = nn.Linear(args.hidden_size, args.hidden_size, bias=False)
 
         # transformation of decoder hidden states and context vectors before reading out target words
         # this produces the `attentional vector` in (Luong et al., 2015)
@@ -325,7 +332,8 @@ class Parser(nn.Module):
 
         ctx_t, alpha_t = nn_utils.dot_prod_attention(h_t,
                                                      src_encodings, src_encodings_att_linear,
-                                                     mask=src_token_mask)
+                                                     mask=src_token_mask, attention_heads=self.numheads,
+                                                     attention_combiner=self.multihead_combiner)
 
         att_t = F.tanh(self.att_vec_linear(torch.cat([h_t, ctx_t], 1)))  # E.q. (5)
         att_t = self.dropout(att_t)
