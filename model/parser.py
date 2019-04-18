@@ -35,7 +35,7 @@ class Parser(nn.Module):
     The parser translates a natural language utterance into an AST defined under
     the ASDL specification, using the transition system described in https://arxiv.org/abs/1810.02720
     """
-    def __init__(self, args, vocab, transition_system, attention_type="multihead"):
+    def __init__(self, args, vocab, transition_system, attention_type="affine"):
         super(Parser, self).__init__()
 
         self.args = args
@@ -123,6 +123,7 @@ class Parser(nn.Module):
         else:
             self.numheads = 1
             self.att_src_linear = nn.Linear(args.hidden_size, args.hidden_size, bias=False)
+            self.multihead_combiner = None
 
         # transformation of decoder hidden states and context vectors before reading out target words
         # this produces the `attentional vector` in (Luong et al., 2015)
