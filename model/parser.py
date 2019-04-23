@@ -706,7 +706,11 @@ class Parser(nn.Module):
         src_sent_var = nn_utils.to_input_variable([src_sent], self.vocab.source, cuda=args.cuda, training=False)
 
         # Variable(1, src_sent_len, hidden_size * 2)
-        src_encodings, (last_state, last_cell) = self.encode(src_sent_var, [len(src_sent)])
+        if self.args.encoder == 'transformer':
+            src_encodings, (last_state, last_cell) = self.encode_transformer(src_sent_var, [len(src_sent)])
+        else:
+            src_encodings, (last_state, last_cell) = self.encode(src_sent_var, [len(src_sent)])
+
         # (1, src_sent_len, hidden_size)
         src_encodings_att_linear = self.att_src_linear(src_encodings)
 
