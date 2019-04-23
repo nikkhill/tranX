@@ -404,7 +404,10 @@ class Parser(nn.Module):
         #packed_src_token_embed = pack_padded_sequence(src_token_embed, src_sents_len)
 
         # src_encodings: (tgt_query_len, batch_size, hidden_size)
-        src_encodings = self.encoder_linear(self.encoder(src_token_embed))
+        if self.args.embed_size == self.args.hidden_size:
+            src_encodings = self.encoder(src_token_embed)
+        else:
+            src_encodings = self.encoder_linear(self.encoder(src_token_embed))
         #src_encodings, _ = pad_packed_sequence(src_encodings)
         # src_encodings: (batch_size, tgt_query_len, hidden_size)
         src_encodings = src_encodings.permute(1, 0, 2)
