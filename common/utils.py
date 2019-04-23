@@ -39,6 +39,7 @@ def init_arg_parser():
 
     #### Model configuration ####
     arg_parser.add_argument('--lstm', choices=['lstm'], default='lstm', help='Type of LSTM used, currently only standard LSTM cell is supported')
+    arg_parser.add_argument('--encoder', choices=['transformer', 'lstm'], default='lstm', help='Type of encoder used')
 
     # Embedding sizes
     arg_parser.add_argument('--embed_size', default=128, type=int, help='Size of word embeddings')
