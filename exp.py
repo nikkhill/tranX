@@ -65,6 +65,7 @@ def train(args):
 
     parser_cls = Registrable.by_name(args.parser)  # TODO: add arg
     model = parser_cls(args, vocab, transition_system)
+    print("number of trainable parameters:", sum(p.numel() for p in model.parameters() if p.requires_grad))
     model.train()
 
     evaluator = Registrable.by_name(args.evaluator)(transition_system, args=args)
