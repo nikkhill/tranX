@@ -22,7 +22,7 @@ class PointerNet(nn.Module):
             self.src_encoding_linear = nn.Linear(src_encoding_size, query_vec_size * self.numheads, bias=False)
             self.multihead_combiner = nn.Linear(self.numheads, 1, bias=False)
         if attention_type == 'multi_options':
-            self.numheads = 4
+            self.numheads = 2
             # values
             self.src_encoding_linear = nn.Linear(src_encoding_size, query_vec_size * self.numheads, bias=False)
             # this will give us a choice between which head to use to choose
@@ -61,7 +61,7 @@ class PointerNet(nn.Module):
 
             if self.attention_type == "multi_options":
                 # (tgt_action_len, batch_size, numheads)
-                options_scores = self.options_linear(query_vec)  # Try softmax?
+                options_scores = F.softmax(self.options_linear(query_vec), dim=-1)  # Try softmax?
                 # (tgt_action_len, batch_size, 1), values are index to options
                 best_options = torch.argmax(options_scores, -1, keepdim=True)
                 best_options = best_options.unsqueeze(2).repeat([1, 1, weights.shape[2], 1])
